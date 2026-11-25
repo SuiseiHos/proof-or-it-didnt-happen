@@ -2,8 +2,9 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { parseClaims } from "./claims";
+import { claimText, recallEvidence, storeEvidence, type PriorEvidence } from "./pinecone";
 import { checkClaim, type ClaimResult } from "./runner";
-import { spriteExec, uploadFixtures } from "./sprite";
+import { spriteExec, uploadDir, uploadFixtures } from "./sprite";
 
 function printTable(results: ClaimResult[]): void {
   const width = Math.max(...results.map((r) => r.id.length), "claim".length);
@@ -42,11 +43,36 @@ async function main(argv: string[]): Promise<number> {
   }
   const fixturesDir = path.join(__dirname, "..", "..", "fixtures");
   if (fs.existsSync(fixturesDir)) uploadFixtures(fixturesDir);
+  const spriteDir = path.join(__dirname, "..", "..", "sprite");
+  if (fs.existsSync(spriteDir)) uploadDir(spriteDir, "/home/sprite");
   const results: ClaimResult[] = [];
+  const priors: (PriorEvidence | null)[] = [];
   for (const claim of claims) {
-    results.push(await checkClaim(claim, spriteExec));
+    let prior: PriorEvidence | null = null;
+    try {
+      prior = await recallEvidence(spriteExec, claimText(claim));
+    } catch (err) {
+      console.error(
+        `warning: recall failed for ${claim.id}: ${(err as Error).message} — continuing without prior evidence`,
+      );
+    }
+    priors.push(prior);
+    const result = await checkClaim(claim, spriteExec);
+    results.push(result);
+    try {
+      await storeEvidence(spriteExec, claim.id, claimText(claim), result.verdict, result.snippet);
+    } catch (err) {
+      console.error(`error: could not store evidence for ${claim.id}: ${(err as Error).message}`);
+      return 1;
+    }
   }
   printTable(results);
+  for (let i = 0; i < results.length; i++) {
+    const prior = priors[i];
+    if (prior) {
+      console.log(`${results[i].id} seen before: ${prior.result} (score ${prior.score.toFixed(2)})`);
+    }
+  }
   const proven = results.filter((r) => r.verdict === "proven").length;
   const owed = results.length - proven;
   console.log(`${proven} proven, ${owed} owed.`);

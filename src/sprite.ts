@@ -43,15 +43,15 @@ export function spriteExec(cmd: string): Promise<ExecResult> {
 }
 
 /**
- * Upload every file in a local directory to /home/sprite/fixtures/ inside
+ * Upload every file in a local directory to a destination directory inside
  * the project Sprite. Evidence must live under $HOME, never /tmp: /tmp does
  * not survive a checkpoint restore.
  */
-export function uploadFixtures(dir: string): void {
+export function uploadDir(dir: string, destDir: string): void {
   for (const file of fs.readdirSync(dir).sort()) {
     const local = path.join(dir, file);
     if (!fs.statSync(local).isFile()) continue;
-    const dest = `/home/sprite/fixtures/${file}`;
+    const dest = `${destDir}/${file}`;
     const run = runSprite([
       "exec",
       "-o",
@@ -65,7 +65,12 @@ export function uploadFixtures(dir: string): void {
       "true",
     ]);
     if (run.status !== 0) {
-      throw new Error(`fixture upload failed for ${file}: ${run.stderr}`);
+      throw new Error(`upload failed for ${file}: ${run.stderr}`);
     }
   }
+}
+
+/** Upload the demo fixtures to /home/sprite/fixtures/ inside the Sprite. */
+export function uploadFixtures(dir: string): void {
+  uploadDir(dir, "/home/sprite/fixtures");
 }
