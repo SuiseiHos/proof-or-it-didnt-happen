@@ -49,7 +49,11 @@ export function parseClaims(text: string): Claim[] {
     }
     const field = line.match(/^(negative|positive):\s*(.+)$/);
     if (field) {
-      current[field[1] as "negative" | "positive"] = field[2].trim();
+      const key = field[1] as "negative" | "positive";
+      if (current[key] !== undefined) {
+        throw new Error(`claim ${current.id} has two ${key} commands`);
+      }
+      current[key] = field[2].trim();
       continue;
     }
     throw new Error(`unknown line in claim ${current.id}: ${line}`);

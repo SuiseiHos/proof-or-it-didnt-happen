@@ -51,6 +51,33 @@ test("throws on a duplicate claim id", () => {
   assert.throws(() => parseClaims(text), /dup/);
 });
 
+test("throws on a duplicate negative command", () => {
+  const text = [
+    "## dup-field",
+    "negative: exit 1",
+    "negative: exit 2",
+    "positive: exit 0",
+    "",
+  ].join("\n");
+  assert.throws(() => parseClaims(text), /two negative/);
+});
+
+test("throws on a duplicate positive command", () => {
+  const text = [
+    "## dup-field",
+    "negative: exit 1",
+    "positive: exit 0",
+    "positive: exit 0",
+    "",
+  ].join("\n");
+  assert.throws(() => parseClaims(text), /two positive/);
+});
+
+test("throws on a claim missing its negative command", () => {
+  const text = ["## lonely", "positive: exit 0", ""].join("\n");
+  assert.throws(() => parseClaims(text), /lonely.*negative|negative.*lonely/);
+});
+
 test("ignores # comment lines and blank lines", () => {
   const text = [
     "# Demo claims for Proof or It Didn't Happen",
