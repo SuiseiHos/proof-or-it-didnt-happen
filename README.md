@@ -4,6 +4,12 @@ A claim is proven only when its negative test fails and its positive test
 passes — re-run inside a Fly Sprite, with the evidence remembered in
 Pinecone. Nothing is proven by assertion alone.
 
+![The demo verdict table: four claims proven, each seen before](docs/demo-terminal.png)
+
+**[Watch the demo (77s, with narration)](docs/demo.mp4)** — the real
+`npm run demo` run: four claims, two against the real chalk and is repos,
+all proven, all remembered.
+
 ## What it does
 
 `proof check <CLAIMS.md>` reads a claims file, runs each claim's two
