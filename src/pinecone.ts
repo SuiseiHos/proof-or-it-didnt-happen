@@ -68,7 +68,7 @@ export async function storeEvidence(
   // can never drop one.
   const safeSnippet = snippet === "" ? "(no output)" : snippet;
   const res = await exec(
-    `${helperCommand()} store --id ${claimId} --text-b64 "${b64(text)}" --result ${result} --snippet-b64 "${b64(safeSnippet)}"`,
+    `${helperCommand()} store --id "${claimId}" --text-b64 "${b64(text)}" --result ${result} --snippet-b64 "${b64(safeSnippet)}"`,
   );
   requireOk(res, `store evidence for ${claimId}`);
 }
@@ -89,5 +89,10 @@ export async function recallEvidence(exec: ExecFn, text: string): Promise<PriorE
   if (typeof m.id !== "string" || typeof m.score !== "number") {
     throw new Error(`recall evidence: malformed match: ${res.stdout.trim()}`);
   }
+  // A near-duplicate claim can score above the 0.9 bar (e.g. same commands
+  // under a different id). Only an exact text match is this claim's own
+  // evidence — anything else is another claim's, and must not feed the
+  // "seen before" line or the REGRESSION note.
+  if (m.text !== text) return null;
   return m;
 }

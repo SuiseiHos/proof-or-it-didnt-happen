@@ -81,7 +81,7 @@ test("store calls the Sprite helper with the claim id, result and base64 payload
   await storeEvidence(exec, "demo-claim", "demo-claim\nnegative: false\npositive: echo OK", "proven", "OK: fixed input accepted");
   assert.equal(seen.length, 1);
   assert.match(seen[0], /pinecone\.py store/);
-  assert.match(seen[0], /--id demo-claim/);
+  assert.match(seen[0], /--id "demo-claim"/);
   assert.match(seen[0], /--result proven/);
   assert.equal(
     decodeB64Arg(seen[0], "--text-b64"),
@@ -106,7 +106,7 @@ test("recall calls the helper and returns the stored match", async () => {
   const { seen, exec } = fakeExec({
     exit: 0,
     stdout: JSON.stringify({
-      match: { id: "claim-demo-claim", result: "proven", score: 0.9999, text: "demo-claim" },
+      match: { id: "claim-demo-claim", result: "proven", score: 0.9999, text: "demo-claim\nnegative: false\npositive: echo OK" },
     }),
     stderr: "",
   });
@@ -121,6 +121,18 @@ test("recall calls the helper and returns the stored match", async () => {
   assert.equal(prior.id, "claim-demo-claim");
   assert.equal(prior.result, "proven");
   assert.equal(prior.score, 0.9999);
+});
+
+test("recall returns null when the stored text differs from the queried text", async () => {
+  const { exec } = fakeExec({
+    exit: 0,
+    stdout: JSON.stringify({
+      match: { id: "claim-audit2-proper", result: "proven", score: 0.92, text: "audit2-proper\nnegative: false\npositive: echo OK" },
+    }),
+    stderr: "",
+  });
+  const prior = await recallEvidence(exec, "audit-proper\nnegative: false\npositive: echo OK");
+  assert.equal(prior, null);
 });
 
 test("recall returns null when nothing was stored before", async () => {
