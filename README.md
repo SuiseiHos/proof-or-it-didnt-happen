@@ -86,6 +86,10 @@ Pinecone <--gateway-- sprite/pinecone.py (store/recall, /embed + vectors)
 
 - The loop itself runs locally as a CLI; the Sprite executes the tests.
   A resident service on the Sprite would be a different project.
+- Two checks must not run against the same Sprite at the same time: the
+  demo claims share `/home/sprite/targets`, so a parallel run can delete
+  the other's freshly cloned repo mid-test. The test suite runs serially
+  (`--test-concurrency=1`) for the same reason.
 - One exec per command, 120s timeout, no retry.
 - Recall counts a match at cosine score >= 0.9.
 - The gate trusts exit codes: a test that exits 0 without testing

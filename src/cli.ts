@@ -47,6 +47,7 @@ async function main(argv: string[]): Promise<number> {
   if (fs.existsSync(spriteDir)) uploadDir(spriteDir, "/home/sprite");
   const results: ClaimResult[] = [];
   const priors: (PriorEvidence | null)[] = [];
+  const storeErrors: string[] = [];
   for (const claim of claims) {
     let prior: PriorEvidence | null = null;
     try {
@@ -62,8 +63,11 @@ async function main(argv: string[]): Promise<number> {
     try {
       await storeEvidence(spriteExec, claim.id, claimText(claim), result.verdict, result.snippet);
     } catch (err) {
-      console.error(`error: could not store evidence for ${claim.id}: ${(err as Error).message}`);
-      return 1;
+      // A store failure must not hide the verdicts: record it, keep
+      // going, and fail the run after the table is printed.
+      const msg = `error: could not store evidence for ${claim.id}: ${(err as Error).message}`;
+      console.error(msg);
+      storeErrors.push(msg);
     }
   }
   printTable(results);
@@ -80,6 +84,10 @@ async function main(argv: string[]): Promise<number> {
   const proven = results.filter((r) => r.verdict === "proven").length;
   const owed = results.length - proven;
   console.log(`${proven} proven, ${owed} owed.`);
+  if (storeErrors.length > 0) {
+    for (const e of storeErrors) console.error(e);
+    return 1;
+  }
   return owed === 0 ? 0 : 1;
 }
 

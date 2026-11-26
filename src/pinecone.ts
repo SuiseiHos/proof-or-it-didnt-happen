@@ -62,15 +62,20 @@ export async function storeEvidence(
   result: Verdict,
   snippet: string,
 ): Promise<void> {
+  // An empty snippet base64-encodes to nothing, which would leave
+  // --snippet-b64 with no value and make argparse exit 2. Store a
+  // placeholder instead, and quote every base64 argument so the shell
+  // can never drop one.
+  const safeSnippet = snippet === "" ? "(no output)" : snippet;
   const res = await exec(
-    `${helperCommand()} store --id ${claimId} --text-b64 ${b64(text)} --result ${result} --snippet-b64 ${b64(snippet)}`,
+    `${helperCommand()} store --id ${claimId} --text-b64 "${b64(text)}" --result ${result} --snippet-b64 "${b64(safeSnippet)}"`,
   );
   requireOk(res, `store evidence for ${claimId}`);
 }
 
 /** Recall the previously stored verdict for a claim, or null when none exists. */
 export async function recallEvidence(exec: ExecFn, text: string): Promise<PriorEvidence | null> {
-  const res = await exec(`${helperCommand()} recall --text-b64 ${b64(text)}`);
+  const res = await exec(`${helperCommand()} recall --text-b64 "${b64(text)}"`);
   requireOk(res, "recall evidence");
   let parsed: unknown;
   try {
