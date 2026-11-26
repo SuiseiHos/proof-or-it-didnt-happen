@@ -12,13 +12,13 @@ function runCli() {
   });
 }
 
-test("core: two claims prove, and the second run recalls the stored evidence", { timeout: 300_000 }, () => {
+test("core: four claims prove, and the second run recalls the stored evidence", { timeout: 300_000 }, () => {
   const first = runCli();
   assert.equal(first.status, 0, `first run exited ${first.status}: ${first.stdout}\n${first.stderr}`);
-  assert.match(first.stdout, /2 proven, 0 owed/i);
+  assert.match(first.stdout, /4 proven, 0 owed/i);
 
   const second = runCli();
   assert.equal(second.status, 0, `second run exited ${second.status}: ${second.stdout}\n${second.stderr}`);
-  assert.match(second.stdout, /2 proven, 0 owed/i);
+  assert.match(second.stdout, /4 proven, 0 owed/i);
   assert.match(second.stdout, /seen before: proven/i);
 });

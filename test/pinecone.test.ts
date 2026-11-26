@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { recallEvidence, storeEvidence } from "../src/pinecone";
+import {
+  helperCommand,
+  recallEvidence,
+  regressionNote,
+  storeEvidence,
+} from "../src/pinecone";
 import type { ExecResult } from "../src/runner";
 
 function fakeExec(result: ExecResult) {
@@ -19,6 +24,57 @@ function decodeB64Arg(cmd: string, flag: string): string {
   assert.ok(match, `command has no ${flag} arg: ${cmd}`);
   return Buffer.from(match[1], "base64").toString("utf8");
 }
+
+test("helperCommand defaults to the author's gateway connection", () => {
+  delete process.env.PINECONE_GATEWAY_CONNECTION_ID;
+  assert.equal(
+    helperCommand(),
+    "python3 /home/sprite/pinecone.py",
+  );
+});
+
+test("helperCommand passes a configured gateway connection through", () => {
+  process.env.PINECONE_GATEWAY_CONNECTION_ID = "AbC-123_xYz";
+  try {
+    assert.equal(
+      helperCommand(),
+      "PINECONE_GATEWAY_CONNECTION_ID=AbC-123_xYz python3 /home/sprite/pinecone.py",
+    );
+  } finally {
+    delete process.env.PINECONE_GATEWAY_CONNECTION_ID;
+  }
+});
+
+test("regressionNote flags a previously-proven claim that is now owed", () => {
+  const note = regressionNote(
+    { id: "claim-demo-claim", result: "proven", score: 1, text: "demo-claim" },
+    { id: "demo-claim", verdict: "owed", reason: "positive failed", negativeExit: 1, positiveExit: 2, snippet: "" },
+  );
+  assert.equal(note, "demo-claim REGRESSION: was proven before, now owed");
+});
+
+test("regressionNote is null when the claim was never proven before", () => {
+  assert.equal(
+    regressionNote(null, {
+      id: "demo-claim", verdict: "owed", reason: "x", negativeExit: 1, positiveExit: 2, snippet: "",
+    }),
+    null,
+  );
+  assert.equal(
+    regressionNote(
+      { id: "claim-demo-claim", result: "owed", score: 1, text: "demo-claim" },
+      { id: "demo-claim", verdict: "owed", reason: "x", negativeExit: 1, positiveExit: 2, snippet: "" },
+    ),
+    null,
+  );
+  assert.equal(
+    regressionNote(
+      { id: "claim-demo-claim", result: "proven", score: 1, text: "demo-claim" },
+      { id: "demo-claim", verdict: "proven", reason: "x", negativeExit: 3, positiveExit: 0, snippet: "OK" },
+    ),
+    null,
+  );
+});
 
 test("store calls the Sprite helper with the claim id, result and base64 payload", async () => {
   const { seen, exec } = fakeExec({ exit: 0, stdout: '{"stored": "claim-demo-claim"}\n', stderr: "" });

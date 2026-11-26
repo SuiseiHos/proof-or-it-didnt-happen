@@ -17,11 +17,18 @@ key by Sprite identity, so no credentials live here or in the repo.
 import argparse
 import base64
 import json
+import os
 import sys
 import urllib.error
 import urllib.request
 
-BASE = "https://api.sprites.dev/v1/gateway/pinecone/-DUWCdlfSnCjOKiXO8xJrQ"
+# The Sprites gateway connection ID for the Pinecone connector. Override
+# with PINECONE_GATEWAY_CONNECTION_ID to point at your own connector;
+# the CLI passes its own env var through when it is set.
+CONNECTION_ID = os.environ.get(
+    "PINECONE_GATEWAY_CONNECTION_ID", "-DUWCdlfSnCjOKiXO8xJrQ"
+)
+BASE = f"https://api.sprites.dev/v1/gateway/pinecone/{CONNECTION_ID}"
 INDEX = "proof-claims"
 MODEL = "llama-text-embed-v2"
 

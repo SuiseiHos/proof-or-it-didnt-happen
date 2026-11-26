@@ -1,5 +1,5 @@
 import type { Claim } from "./claims";
-import type { ExecFn, ExecResult, Verdict } from "./runner";
+import type { ClaimResult, ExecFn, ExecResult, Verdict } from "./runner";
 
 export interface PriorEvidence {
   id: string;
@@ -8,7 +8,37 @@ export interface PriorEvidence {
   text: string;
 }
 
-const HELPER = "python3 /home/sprite/pinecone.py";
+export const DEFAULT_CONNECTION_ID = "-DUWCdlfSnCjOKiXO8xJrQ";
+
+/**
+ * The command that runs the Sprite-side Pinecone helper. The gateway
+ * connection ID can be overridden with PINECONE_GATEWAY_CONNECTION_ID so
+ * anyone can point the tool at their own connector; an unsafe value is
+ * ignored (the helper's own default applies).
+ */
+export function helperCommand(): string {
+  const id = process.env.PINECONE_GATEWAY_CONNECTION_ID;
+  if (id && /^[A-Za-z0-9_-]+$/.test(id)) {
+    return `PINECONE_GATEWAY_CONNECTION_ID=${id} python3 /home/sprite/pinecone.py`;
+  }
+  return "python3 /home/sprite/pinecone.py";
+}
+
+/**
+ * When a claim was proven before and is owed now, memory has caught a
+ * regression: the world changed under an unchanged claim. Returns the
+ * line to print, or null when there is nothing to flag.
+ */
+export function regressionNote(
+  prior: PriorEvidence | null,
+  result: ClaimResult,
+): string | null {
+  if (prior && prior.result === "proven" && result.verdict === "owed") {
+    return `${result.id} REGRESSION: was proven before, now owed`;
+  }
+  return null;
+}
+
 const b64 = (s: string) => Buffer.from(s, "utf8").toString("base64");
 
 /** The text embedded for a claim: its id plus both test commands. */
@@ -33,14 +63,14 @@ export async function storeEvidence(
   snippet: string,
 ): Promise<void> {
   const res = await exec(
-    `${HELPER} store --id ${claimId} --text-b64 ${b64(text)} --result ${result} --snippet-b64 ${b64(snippet)}`,
+    `${helperCommand()} store --id ${claimId} --text-b64 ${b64(text)} --result ${result} --snippet-b64 ${b64(snippet)}`,
   );
   requireOk(res, `store evidence for ${claimId}`);
 }
 
 /** Recall the previously stored verdict for a claim, or null when none exists. */
 export async function recallEvidence(exec: ExecFn, text: string): Promise<PriorEvidence | null> {
-  const res = await exec(`${HELPER} recall --text-b64 ${b64(text)}`);
+  const res = await exec(`${helperCommand()} recall --text-b64 ${b64(text)}`);
   requireOk(res, "recall evidence");
   let parsed: unknown;
   try {

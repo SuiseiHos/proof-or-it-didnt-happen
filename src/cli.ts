@@ -2,7 +2,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { parseClaims } from "./claims";
-import { claimText, recallEvidence, storeEvidence, type PriorEvidence } from "./pinecone";
+import { claimText, recallEvidence, regressionNote, storeEvidence, type PriorEvidence } from "./pinecone";
 import { checkClaim, type ClaimResult } from "./runner";
 import { spriteExec, uploadDir, uploadFixtures } from "./sprite";
 
@@ -72,6 +72,10 @@ async function main(argv: string[]): Promise<number> {
     if (prior) {
       console.log(`${results[i].id} seen before: ${prior.result} (score ${prior.score.toFixed(2)})`);
     }
+  }
+  for (let i = 0; i < results.length; i++) {
+    const note = regressionNote(priors[i], results[i]);
+    if (note) console.log(note);
   }
   const proven = results.filter((r) => r.verdict === "proven").length;
   const owed = results.length - proven;

@@ -17,7 +17,10 @@ commands inside a Sprite, and prints a verdict table:
 Before running a claim, the gate recalls its previous evidence from
 Pinecone (`<id> seen before: proven (score 1.00)`); after running, it
 stores the new verdict. A claim is therefore provably tested before,
-not just asserted now. No language model is involved in the verdict —
+not just asserted now. Memory also has a job in the verdict path: if a
+claim was proven before and is owed now, the run prints
+`<id> REGRESSION: was proven before, now owed` — the world changed under
+an unchanged claim. No language model is involved in the verdict —
 verdicts are exit codes; Pinecone embeddings are deterministic retrieval.
 
 ## Prerequisites
@@ -26,10 +29,13 @@ verdicts are exit codes; Pinecone embeddings are deterministic retrieval.
 - A [Fly.io](https://fly.io) account and the
   [Sprite CLI](https://fly.io/sprites/) (`sprite login`).
 - A Sprite named `proof-or-it-didnt-happen` in your Sprite org
-  (`sprite create proof-or-it-didnt-happen`).
+  (`sprite create proof-or-it-didnt-happen`). Point the tool at your own
+  Sprite with `SPRITE_ORG` and `SPRITE_NAME`.
 - A [Pinecone](https://www.pinecone.io) account with a Sprites Pinecone
   connector whose access is granted to sprites named `proof-*`, and a
   legacy dense index named `proof-claims` (1024 dimensions, cosine).
+  Point the tool at your own connector with
+  `PINECONE_GATEWAY_CONNECTION_ID`.
   The Pinecone console only creates document-schema indexes; a legacy
   index needs the control-plane API:
 
@@ -46,9 +52,8 @@ curl -X POST https://api.pinecone.io/indexes \
 
 ```sh
 npm install
-npm run demo               # 2 seeded claims, ~35s, 2 proven, 0 owed
-npm run check:real-world   # the gate against chalk + is, ~30-50s
-npm test                   # 20 tests, including a real-Sprite end-to-end run
+npm run demo               # 4 claims (chalk + is first, then 2 seeded), ~75s
+npm test                   # 20+ tests, including a real-Sprite end-to-end run
 ```
 
 ## How it works
@@ -73,15 +78,14 @@ Pinecone <--gateway-- sprite/pinecone.py (store/recall, /embed + vectors)
 
 ## Claims files
 
-- `examples/CLAIMS.md` — the demo: one fixture claim and one inline claim.
-- `examples/real-world-CLAIMS.md` — the gate against two real public
-  repos, cloned fresh inside the Sprite on every run, no install needed:
-  chalk's own test suite (42 tests) with one line broken, and
-  `@sindresorhus/is` checked by `fixtures/is-assert.mjs`.
+- `examples/CLAIMS.md` — the demo: the gate against two real public repos
+  first (chalk's own suite, `@sindresorhus/is` via
+  `fixtures/is-assert.mjs`), then two seeded fixture claims.
 
 ## Known limitations
 
-- The Sprite org and name are hardcoded (`src/sprite.ts`).
+- The loop itself runs locally as a CLI; the Sprite executes the tests.
+  A resident service on the Sprite would be a different project.
 - One exec per command, 120s timeout, no retry.
 - Recall counts a match at cosine score >= 0.9.
 - The gate trusts exit codes: a test that exits 0 without testing

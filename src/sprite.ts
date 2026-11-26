@@ -4,8 +4,19 @@ import * as os from "node:os";
 import * as path from "node:path";
 import type { ExecResult } from "./runner";
 
-export const SPRITE_ORG = "aldantus23-gmail-com";
-export const SPRITE_NAME = "proof-or-it-didnt-happen";
+export const DEFAULT_SPRITE_ORG = "aldantus23-gmail-com";
+export const DEFAULT_SPRITE_NAME = "proof-or-it-didnt-happen";
+
+/**
+ * The Sprite this CLI talks to. Override with SPRITE_ORG / SPRITE_NAME so
+ * anyone can point the tool at their own Sprite without editing source.
+ */
+export function spriteConfig(): { org: string; name: string } {
+  return {
+    org: process.env.SPRITE_ORG ?? DEFAULT_SPRITE_ORG,
+    name: process.env.SPRITE_NAME ?? DEFAULT_SPRITE_NAME,
+  };
+}
 
 /** The sprite CLI ships on PATH after install; this VM keeps it under ~/.local/bin. */
 function spriteBin(): string {
@@ -27,12 +38,13 @@ function runSprite(args: string[]): { status: number; stdout: string; stderr: st
 
 /** Run one shell command inside the project Sprite. Exit codes propagate. */
 export function spriteExec(cmd: string): Promise<ExecResult> {
+  const { org, name } = spriteConfig();
   const run = runSprite([
     "exec",
     "-o",
-    SPRITE_ORG,
+    org,
     "-s",
-    SPRITE_NAME,
+    name,
     "--no-stdin",
     "--",
     "sh",
@@ -48,6 +60,7 @@ export function spriteExec(cmd: string): Promise<ExecResult> {
  * not survive a checkpoint restore.
  */
 export function uploadDir(dir: string, destDir: string): void {
+  const { org, name } = spriteConfig();
   for (const file of fs.readdirSync(dir).sort()) {
     const local = path.join(dir, file);
     if (!fs.statSync(local).isFile()) continue;
@@ -55,9 +68,9 @@ export function uploadDir(dir: string, destDir: string): void {
     const run = runSprite([
       "exec",
       "-o",
-      SPRITE_ORG,
+      org,
       "-s",
-      SPRITE_NAME,
+      name,
       "--no-stdin",
       "--file",
       `${local}:${dest}`,
